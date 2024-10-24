@@ -1,6 +1,7 @@
 name: Check for new versions of Dask on Conda Forge
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: "0 * * * *"
 
@@ -11,31 +12,36 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Get current Dask version
+        id: current_version
+        uses: the-coding-turtle/ga-yaml-parser@v0.1.2
+        with:
+          file: .github/workflows/build.yml
+
       - name: Get latest Dask version
         id: latest_version
-        uses: jacobtomlinson/gha-anaconda-package-version@0.1.1
+        uses: jacobtomlinson/gha-anaconda-package-version@0.1.4
         with:
           org: "conda-forge"
           package: "dask"
-      - name: Find and Replace Base
-        uses: jacobtomlinson/gha-find-replace@0.1.1
+
+      - name: Find and Replace Release
+        uses: jacobtomlinson/gha-find-replace@2.0.0
         with:
-          include: "base/"
-          find: "dask==.* "
-          replace: "dask==${{ steps.latest_version.outputs.version }} "
-      - name: Find and Replace Notebook
-        uses: jacobtomlinson/gha-find-replace@0.1.1
-        with:
-          include: "notebook/"
-          find: "dask==.* "
-          replace: "dask==${{ steps.latest_version.outputs.version }} "
+          find: ${{ steps.current_version.outputs.jobs_docker_env_release }}
+          replace: ${{ steps.latest_version.outputs.version }}
+          regex: false
+
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v2
+        uses: peter-evans/create-pull-request@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.DASK_BOT_TOKEN }}
           commit-message: "Update Dask version to ${{ steps.latest_version.outputs.version }}"
           title: "Update Dask version to ${{ steps.latest_version.outputs.version }}"
           reviewers: "jacobtomlinson"
+          labels: "automerge"
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           branch: "upgrade-dask-version"
           body: |
             A new Dask version has been detected.
